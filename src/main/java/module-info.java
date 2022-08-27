@@ -8,6 +8,10 @@ module com.javafxapp.javafxapplication {
     //requires validatorfx;
     requires org.kordamp.ikonli.javafx;
     requires org.kordamp.bootstrapfx.core;
+    requires mysql.connector.java;
+    requires java.sql;
+    requires commons.dbcp2;
+    requires java.management;
     //requires eu.hansolo.tilesfx;
 
     opens com.javafxapp.javafxapplication to javafx.fxml;
