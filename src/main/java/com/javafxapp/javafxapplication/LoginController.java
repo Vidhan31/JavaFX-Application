@@ -10,6 +10,7 @@ import javafx.scene.paint.Color;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Types;
 
 public class LoginController {
     @FXML
@@ -28,26 +29,41 @@ public class LoginController {
     private Label signupLabel;
 
     @FXML
-    protected void checkRegistration() {
+    protected void checkRegistration() throws Exception {
 
-        if (newEmailField.getText().contains("@") && newEmailField.getText().length() > 5) {
+        String email = replaceWhitespaces(setNullOnEmpty(newEmailField.getText()));
+        String username = replaceWhitespaces(setNullOnEmpty(newUsernameField.getText()));
+        String password = replaceWhitespaces(setNullOnEmpty(newPasswordField.getText()));
+        String query = "INSERT INTO user_accounts VALUES (?, ?, ?)";
+        int queryResult;
 
-            signupLabel.setText("Successfully registered!");
-            signupLabel.setTextFill(Color.GREEN);
-            signupLabel.setAlignment(Pos.CENTER);
-        } else if (!newEmailField.getText().isEmpty()) {
-            passwordField.clear();
-            signupLabel.setText("Please enter valid email ID!");
-            signupLabel.setTextFill(Color.RED);
-            signupLabel.setAlignment(Pos.CENTER);
-        }
-
-        if (newUsernameField.getText().isEmpty() || newPasswordField.getText().isEmpty()) {
+        if (username == null || password == null) {
 
             passwordField.clear();
-            signupLabel.setText("Fill in required details!");
-            signupLabel.setTextFill(Color.RED);
-            signupLabel.setAlignment(Pos.CENTER);
+            getWarningMessage(signupLabel, "Fill mandatory fields");
+        } else if (email != null && !isValidEmail(email)) {
+
+            getErrorMessage(signupLabel, "Invalid email");
+
+        } else if (!isValidPassword(password)) {
+
+            getErrorMessage(signupLabel, "Password strength must be at least above 8 characters");
+        } else {
+
+            try (Connection connect = ConnectionPool.getDataSource().getConnection()) {
+                System.out.println(connect.hashCode());
+                try (PreparedStatement statement = connect.prepareStatement(query)) {
+                    statement.setObject(1, email, Types.VARCHAR);
+                    statement.setString(2, username);
+                    statement.setString(3, password);
+                    queryResult = statement.executeUpdate();
+                }
+            }
+
+            if (queryResult > 0) {
+
+                getSuccessMessage(signupLabel, "Successfully registered");
+            }
         }
     }
 
@@ -59,9 +75,10 @@ public class LoginController {
         boolean queryResult = false;
         String query = "SELECT user_username, user_password FROM user_accounts WHERE user_username=? AND user_password=?";
 
-        if (!username.isEmpty() && !password.isEmpty()) {
+        if (username != null && password != null) {
 
             try (Connection connect = ConnectionPool.getDataSource().getConnection()) {
+                System.out.println(connect.hashCode());
                 try (PreparedStatement statement = connect.prepareStatement(query)) {
                     statement.setString(1, username);
                     statement.setString(2, password);
@@ -73,28 +90,20 @@ public class LoginController {
             }
         } else {
             passwordField.clear();
-            errorLabel.setText("Fields cannot be empty!");
-            errorLabel.setTextFill(Color.ORANGERED);
-            errorLabel.setAlignment(Pos.CENTER);
+            getWarningMessage(errorLabel, "Incomplete details");
         }
 
         if (queryResult) {
-            errorLabel.setText("Success!");
-            errorLabel.setTextFill(Color.GREEN);
-            errorLabel.setAlignment(Pos.CENTER);
+            getSuccessMessage(errorLabel, "Success");
             Main application = new Main();
-            application.changeScene("main-page.fxml",700,450);
+            application.changeScene("main-page.fxml", 1200, 700);
         } else if (username.equals("111") && password.equals("111")) {
-            errorLabel.setText("Success!");
-            errorLabel.setTextFill(Color.GREEN);
-            errorLabel.setAlignment(Pos.CENTER);
+            getSuccessMessage(errorLabel, "Success");
             Main application = new Main();
-            application.changeScene("main-page.fxml",700,450);
+            application.changeScene("main-page.fxml", 700, 450);
         } else {
             passwordField.clear();
-            errorLabel.setText("Wrong credentials!");
-            errorLabel.setTextFill(Color.RED);
-            errorLabel.setAlignment(Pos.CENTER);
+            getErrorMessage(errorLabel, "Wrong credentials");
         }
     }
 
@@ -104,4 +113,45 @@ public class LoginController {
         usernameField.clear();
         passwordField.clear();
     }
+
+    private boolean isValidEmail(String email) {
+
+        return email.contains("@") && email.length() > 5;
+    }
+
+    private boolean isValidPassword(String password) {
+
+        return password.length() > 8;
+    }
+
+    private String setNullOnEmpty(String text) {
+        return text != null && text.trim().isEmpty() ? null : text;
+    }
+
+    private String replaceWhitespaces(String s) {
+
+        return s == null ? null : s.replace(" ", "_");
+    }
+
+    private void getSuccessMessage(Label label, String message) {
+
+        label.setText(message);
+        label.setTextFill(Color.GREEN);
+        label.setAlignment(Pos.CENTER);
+    }
+
+    private void getWarningMessage(Label label, String message) {
+
+        label.setText(message);
+        label.setTextFill(Color.RED);
+        label.setAlignment(Pos.CENTER);
+    }
+
+    private void getErrorMessage(Label label, String message) {
+
+        label.setText(message);
+        label.setTextFill(Color.RED);
+        label.setAlignment(Pos.CENTER);
+    }
+
 }
